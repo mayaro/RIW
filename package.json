@@ -2,11 +2,14 @@
   "name": "riw",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": { "start": "node index.js" },
+  "description": "",
+  "scripts": {
+    "start": "node index.js"
+  },
   "author": "Ștefan Muraru <muraru.stefaan@gmail.com>",
   "license": "ISC",
+  "repository": "",
   "dependencies": {
-    "cheerio": "^1.0.0-rc.2",
-    "node-fetch": "^2.0.0"
+    "cheerio": "^1.0.0-rc.2"
   }
 }
