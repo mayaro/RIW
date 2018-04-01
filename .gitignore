@@ -2,3 +2,6 @@ node_modules/
 package-lock.json
 metadata.json
 samples/
+direct-index/
+reverse-index/
+.idea/

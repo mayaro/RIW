@@ -1,3 +1,7 @@
+// TODO: Add exceptions after refactor
+// TODO: Add stop-words after refactor
+// TODO: Add stemming
+
 const cheerio  = require('cheerio');
 const fs = require('fs');
 
