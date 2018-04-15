@@ -25,6 +25,7 @@ const Operations = Object.freeze({
    */
   NOT:  (results, currentWordDocumentNames) =>
     results.filter(doc => !currentWordDocumentNames.includes(doc)),
+
 });
 
 /**

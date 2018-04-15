@@ -19,20 +19,21 @@ app.get(
         .json({ docs: [] })
     }
 
-    let documents = [];
+    let wordDocuments = [];
+    let docs = [];
     try {
-      documents = await SearchServer.doSearch(req.query.q, reverseIndexCollection);
+      docs = (await SearchServer.doSearch(req.query.q, reverseIndexCollection));
     }
     catch (e) {
       return res
         .status(500)
-        .json({ docs: [], message: e.toString() });
+        .json({ docs, message: e.toString() });
     }
 
     return res
       .status(200)
       .json({
-        docs: documents
+        docs
       });
   }
 );
