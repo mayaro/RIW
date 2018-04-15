@@ -27,11 +27,13 @@ const doSearch = async function doBooleanSearch(searchQueryString, reverseIndexC
 
   try {
     let docs = [];
-    const results = (await reverseIndexCollection.find({ word: { $in: queryTerms } }, { _id: 0 })
+    const results = {};
+    (await reverseIndexCollection.find({ word: { $in: queryTerms } }, { _id: 0 })
       .toArray()).map(w => {
         w.documents.forEach(d => {
           if (docs.indexOf(d.name) === -1) docs.push(d.name);
-        })
+        });
+        results[w.word] = w;
     });
 
     let vectors = (await reverseIndexCollection.aggregate([
@@ -45,8 +47,50 @@ const doSearch = async function doBooleanSearch(searchQueryString, reverseIndexC
         }},
       { $project: { "name": "$_id.name", "mod": { $sqrt: "$mod" } }}
     ]).toArray());
+    let pathsWithModulus = {};
+    vectors.forEach(v => pathsWithModulus[v.name] = v.mod);
 
-    return vectors;
+    const searchTerms = {};
+    queryTerms.forEach(qt => {
+      if (!searchTerms[qt]) {
+        searchTerms[qt] = {
+          count: 0,
+          tf: 0,
+          idf: results[qt].reverseFrequency ? results[qt].reverseFrequency : 0
+        }
+      }
+
+      searchTerms[qt].count++;
+      searchTerms[qt].tf = searchTerms[qt].count / queryTerms.length;
+    });
+
+    const queryMod = Math.sqrt(
+      Object.values(searchTerms).reduce((acc, v) => acc + Math.pow(v.tf * v.idf, 2), 0)
+    );
+
+    function getTFIDF(path, word) {
+      return ((results[word] || {documents: []}).documents.find(pO => pO.name === path) || {}).tfidf || 0;
+    }
+
+    // return vectors.sort((docA, docB) => {
+    //   const downA = (queryMod * pathsWithModulus[docA.name]) || 1;
+    //   const upA = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(docA.name, sT), 0);
+    //   const downB = (queryMod * pathsWithModulus[docB.name]) || 1;
+    //   const upB = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(docB.name, sT), 0);
+    //   const cosA = upA / downA;
+    //   const cosB = upB / downB;
+    //   return cosB - cosA;
+    // });
+
+    return vectors.map(v => {
+      const down = (queryMod * pathsWithModulus[v.name]) || 1;
+      const up = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(v.name, sT), 0);
+      const cos = up / down;
+      return {
+        name: v.name,
+        cos
+      };
+    }).sort((a, b) => b.cos - a.cos)
   } catch(e) {
     console.error(e);
     return [];
