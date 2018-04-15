@@ -1,89 +1,64 @@
 module.exports = exports = {
 
   /**
-   * Create the direct index of a file given it's read stream
+   * Create the direct index for a given text and return it as a object.
    *
-   * @param { ReadStream } fileStream
-   * @return {Promise<any>}
-   *
-   * @type { function }
-   * @exports
+   * @param { String } text
+   * @return {{}}
    */
-  createDirectIndexFromFileStream: function createDirectIndexFromString(fileStream) {
-    return new Promise((resolve, reject) => {
+  createDirectIndexFromText: function (text) {
+    let words = text.split(/\s+/);
+    const index = words
+      .reduce((index, word) => {
+        if (!word || !word.length) return index;
 
-      let index = {};
+        index[word] = index[word] ? ++index[word] : 1;
+        return index;
+      }, {});
 
-      let receivedString = '';
-
-      fileStream.on('end', () => {
-        if (receivedString && receivedString.length) {
-          const splittedChunk = receivedString.split(/\s+/);
-
-          index = createIndexFromSplittedChunk(splittedChunk);
-        }
-
-        return resolve(index);
-      });
-
-      fileStream.on('data', chunk => {
-        receivedString += chunk.toString();
-        const splittedChunk = receivedString.split(/\s+/);
-
-        index = createIndexFromSplittedChunk(index, splittedChunk);
-
-        receivedString = splittedChunk[splittedChunk.length];
-      });
-
-      fileStream.on('error', err => reject(err));
-
+    const frequencies = {};
+    Object.entries(index).forEach(([key, value]) => {
+      frequencies[key] = value / words.length;
     });
+
+    return { index, frequencies };
   },
 
-  createReverseIndex: async function createReverseIndex(files) {
+  GetReverseIndexingPipelineStages: function GetReverseIndexingPipelineStages(word) {
 
-    const reverseIndexObject = {};
+    const unwindStage = {
+      "$unwind": "$words"
+    };
 
-    files.forEach(([file, properties]) => {
+    const matchStage = {
+      $match: {}
+    };
+    matchStage.$match[`words.${word}`] = { $exists: true };
 
-      const directIndex = require(properties.directIndex)[file];
-
-      for (const [word, numberOfAppearances] of Object.entries(directIndex)) {
-
-        reverseIndexObject[word] = reverseIndexObject[word] || {};
-        reverseIndexObject[word][file] = numberOfAppearances;
-
+    const projectStage = {
+      $project: {
+        _id: 0,
+        name: 1,
+        appearances: `$words.${word}`,
+        frequency: `$frequencies.${word}`
       }
+    };
 
-    });
+    const groupStage = {
+      $group: {
+        _id: null,
+        documents: {
+          $push: {
+            name: '$name',
+            appearances: '$appearances',
+            frequency: '$frequency'
+          }
+        }
+      }
+    };
 
-    return reverseIndexObject;
-
-  }
-
-};
-
-/**
- * Create the direct index of a given string chunk by concatenating entries to a already existing index.
- *
- * @param { object } indexObject
- * @param {string} splittedChunk
- *
- * @return { object }
- *
- * @type { function }
- */
-const createIndexFromSplittedChunk = function createIndexFromSplittedChunk(indexObject, splittedChunk) {
-  const newIndexObject = JSON.parse(JSON.stringify(indexObject));
-
-  for (let idx = 0; idx < splittedChunk.length - 1; ++idx) {
-
-    if (!splittedChunk[idx] || !splittedChunk[idx].length || splittedChunk[idx].length <= 3 ) continue;
-
-    newIndexObject[splittedChunk[idx]] = newIndexObject[splittedChunk[idx]] ?
-      ++newIndexObject[splittedChunk[idx]] : 1;
+    return [ unwindStage, matchStage, projectStage, groupStage ];
 
   }
 
-  return newIndexObject;
 };

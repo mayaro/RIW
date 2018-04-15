@@ -24,7 +24,12 @@ module.exports = exports = {
       filelist = [];
     }
 
-    const files = fs.readdirSync(dir);
+    let files;
+    try {
+
+      files = fs.readdirSync(dir);
+    
+    } catch (e) { return []; }
 
     filelist = filelist || [];
 

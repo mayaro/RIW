@@ -1,9 +1,8 @@
-// TODO: Add exceptions after refactor
-// TODO: Add stop-words after refactor
-// TODO: Add stemming
-
 const cheerio  = require('cheerio');
 const fs = require('fs');
+const stem = require('stemmer');
+const stopwords = require('./StopWords.json');
+const exceptions = require('./Exceptions.json');
 
 /**
  * Module that handles metadata extraction from texts.
@@ -19,32 +18,47 @@ module.exports = exports = {
    *  - converting the text to lowercase
    *
    * @param { string } filePath
-   * @return { string }
+   * @return { Promise }
    */
   extractTextSync: function extractText(filePath) {
+    return new Promise((resolve, reject) => {
+      const rawContent = fs.readFile(filePath, (err, rawContent) => {
+        if (err) {
+          return reject(err);
+        }
 
-    const rawContent = fs.readFileSync(filePath).toString();
-    const select = cheerio.load(rawContent);
+        const select = cheerio.load(rawContent);
 
-    const metaContent = getMetaFromText(rawContent);
+        const metaContent = removeUnwantedWords(
+          removeNonAlphasFromString(
+            getMetaFromText(rawContent)
+          )
+        );
 
-    const parsedContent = select('html *')
-      .toArray()
-      .reduce((acc, current) => {
-          const tagText = select(current).text();
-          const normalizedText = removeNonAlphasFromString(tagText);
-          const casedText = normalizedText.toLowerCase();
+        const parsedContent = select('html *')
+          .toArray()
+          .reduce((acc, current) => {
+              const tagText = select(current).text();
+              const normalizedText = removeUnwantedWords(
+                removeNonAlphasFromString(tagText)
+              );
+              const casedText = normalizedText.toLowerCase();
 
-          return `${acc} ${casedText}`;
-        },
-        '');
+              return `${acc} ${casedText}`;
+            },
+            '');
 
-    return `${parsedContent} ${metaContent}`;
-
+        return resolve({
+          rawContent,
+          parsedContent: removeNonAlphasFromString(`${parsedContent} ${metaContent}`)
+        });
+      })
+    });
   },
 
 };
 
+// Only the selectors declared here will be concatenated to the extracted text
 const MetaSelectors = [
   `meta[name="robots"]`,
   `meta[name="description"]`,
@@ -60,6 +74,30 @@ const MetaSelectors = [
  * @type { function }
  */
 const removeNonAlphasFromString = str => str.replace(/\W+/g, ' ');
+
+/**
+ * Remove the unwanted words from a text.
+ * The words
+ *
+ * @param { string } text
+ * @return { string }
+ *
+ * @type { function }
+ */
+const removeUnwantedWords = text => {
+  return text.split(/\s+/)
+    .reduce((acc, word) => {
+      if (!word || !word.length) return acc;
+
+      if (exceptions[word]) return `${acc} ${stem(word)}`;
+
+      if (!word || !word.length || word.length <= 2) return acc;
+
+      if (stopwords[word]) return acc;
+
+      return `${acc} ${stem(word)}`;
+    }, '')
+};
 
 /**
  * Extract the meta attributes from a given html document if they exist
@@ -89,6 +127,6 @@ const getMetaFromText = function getMetaFromText(rawContent) {
       }
     },
     ''
-  );
+  ) || '';
 
 };

@@ -42,10 +42,8 @@ const isSearchKeyword = function isSearchKeyword(keyword) {
  * @param { string } word
  * @returns { Array<string> }
  */
-const getDocumentNamesForWord = function(reverseIndexCollection, word) {
-  return !!reverseIndexCollection[word] ?
-    Object.keys(reverseIndexCollection[word]) :
-    [];
+const getDocumentNamesForWord = async function(reverseIndexCollection, word) {
+  return await reverseIndexCollection.findOne({ word }).documents;
 };
 
 module.exports = exports = {
