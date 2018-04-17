@@ -14,6 +14,7 @@
     "express": "^4.16.2",
     "mongodb": "^3.0.5",
     "stem-porter": "0.0.1",
-    "stemmer": "^1.0.2"
+    "stemmer": "^1.0.2",
+    "utf8": "^3.0.0"
   }
 }

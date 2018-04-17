@@ -56,7 +56,7 @@ const doSearch = async function doBooleanSearch(searchQueryString, reverseIndexC
         searchTerms[qt] = {
           count: 0,
           tf: 0,
-          idf: results[qt].reverseFrequency ? results[qt].reverseFrequency : 0
+          idf: results[qt] && results[qt].reverseFrequency ? results[qt].reverseFrequency : 0
         }
       }
 
@@ -68,29 +68,21 @@ const doSearch = async function doBooleanSearch(searchQueryString, reverseIndexC
       Object.values(searchTerms).reduce((acc, v) => acc + Math.pow(v.tf * v.idf, 2), 0)
     );
 
-    function getTFIDF(path, word) {
+    function getVectorTFIDF(path, word) {
       return ((results[word] || {documents: []}).documents.find(pO => pO.name === path) || {}).tfidf || 0;
     }
 
-    // return vectors.sort((docA, docB) => {
-    //   const downA = (queryMod * pathsWithModulus[docA.name]) || 1;
-    //   const upA = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(docA.name, sT), 0);
-    //   const downB = (queryMod * pathsWithModulus[docB.name]) || 1;
-    //   const upB = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(docB.name, sT), 0);
-    //   const cosA = upA / downA;
-    //   const cosB = upB / downB;
-    //   return cosB - cosA;
-    // });
-
     return vectors.map(v => {
       const down = (queryMod * pathsWithModulus[v.name]) || 1;
-      const up = Object.entries(searchTerms).reduce((accum, [sT, sTO]) => accum + sTO.tf * sTO.idf * getTFIDF(v.name, sT), 0);
+      const up = Object.entries(searchTerms)
+        .reduce((acc, [t0, t1]) => acc + t1.tf * t1.idf * getVectorTFIDF(v.name, t0), 0);
       const cos = up / down;
+
       return {
         name: v.name,
         cos
       };
-    }).sort((a, b) => b.cos - a.cos)
+    }).sort((a, b) => b.cos - a.cos);
   } catch(e) {
     console.error(e);
     return [];

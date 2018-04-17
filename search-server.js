@@ -19,6 +19,7 @@ app.get(
         .json({ docs: [] })
     }
 
+    let time = Date.now();
     let wordDocuments = [];
     let docs = [];
     try {
@@ -30,6 +31,7 @@ app.get(
         .json({ docs, message: e.toString() });
     }
 
+    console.log(Date.now() - time)
     return res
       .status(200)
       .json({

@@ -1,4 +1,4 @@
-const InputDirectory = 'samples';
+const InputDirectory = 'riwdataset';
 
 const Communication = require('./src/Communication');
 const FileOperations = require('./src/Files');
@@ -10,7 +10,7 @@ console.log(`Available CPU cores: ${AvailableCPUCores}`);
 // Get the ".html" filenames in the input directory
 const dirFiles = FileOperations.getFilesInDirectory(
   InputDirectory,
-  filename => filename.endsWith('.html')
+  filename => filename
 );
 
 if (!dirFiles.length) {

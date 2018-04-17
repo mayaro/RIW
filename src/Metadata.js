@@ -22,35 +22,40 @@ module.exports = exports = {
    */
   extractTextSync: function extractText(filePath) {
     return new Promise((resolve, reject) => {
-      const rawContent = fs.readFile(filePath, (err, rawContent) => {
+      fs.readFile(filePath, (err, rawContent) => {
         if (err) {
           return reject(err);
         }
 
-        const select = cheerio.load(rawContent);
+        // const select = cheerio.load(rawContent);
+        //
+        // const metaContent = removeUnwantedWords(
+        //   removeNonAlphasFromString(
+        //     getMetaFromText(rawContent)
+        //   )
+        // );
+        //
+        // const parsedContent = select('html *')
+        //   .toArray()
+        //   .reduce((acc, current) => {
+        //       const tagText = select(current).text();
+        //       const normalizedText = removeUnwantedWords(
+        //         removeNonAlphasFromString(tagText)
+        //       );
+        //       const casedText = normalizedText.toLowerCase();
+        //
+        //       return `${acc} ${casedText}`;
+        //     },
+        //     '');
 
-        const metaContent = removeUnwantedWords(
-          removeNonAlphasFromString(
-            getMetaFromText(rawContent)
-          )
+        const normalizedText = removeUnwantedWords(
+          removeNonAlphasFromString(rawContent.toString())
         );
-
-        const parsedContent = select('html *')
-          .toArray()
-          .reduce((acc, current) => {
-              const tagText = select(current).text();
-              const normalizedText = removeUnwantedWords(
-                removeNonAlphasFromString(tagText)
-              );
-              const casedText = normalizedText.toLowerCase();
-
-              return `${acc} ${casedText}`;
-            },
-            '');
+        const casedText = normalizedText.toLowerCase();
 
         return resolve({
           rawContent,
-          parsedContent: removeNonAlphasFromString(`${parsedContent} ${metaContent}`)
+          parsedContent: casedText
         });
       })
     });

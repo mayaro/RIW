@@ -10,6 +10,7 @@ let reverseIndexCollection = null;
 
 process.on('message', async (message, socket) => {
 
+  // Create database connections on first run
   if (dbConnection === null) {
     try {
       dbConnection = await MongoClient.connect('mongodb://localhost:27017');
@@ -23,6 +24,7 @@ process.on('message', async (message, socket) => {
     }
   }
 
+  // Choose the correct processing stage for the received message
   switch(message.type) {
 
     case 'text_processing': {
@@ -56,12 +58,13 @@ process.on('message', async (message, socket) => {
       try {
         dbDocument = await docsCollection.findOne({name: filename}, {parsedContent: 1});
       } catch (e) {
-        console.error(`Process ${process.pid} could not retrieve document's ${message.name} parsed contents from db, reason ${e}`)
+        console.error(`Process ${process.pid} could not retrieve document's ${message.name} parsed contents from db,
+          reason ${e}`)
 
         return process.send({type: message.type, jobs: [ ]});
       }
 
-      const { index, frequencies } = Indexing.createDirectIndexFromText(dbDocument.parsedContent);
+      const index = Indexing.createDirectIndexFromText(dbDocument.parsedContent);
 
       try {
         await directIndexCollection
@@ -69,16 +72,16 @@ process.on('message', async (message, socket) => {
             name: filename
           }, {
             name: filename,
-            words: index,
-            frequencies
+            words: index
           }, {
             upsert: true
           });
       } catch (e) {
-        console.error(`Process ${process.pid} could not add document's ${message.name} direct-index to db, reason ${e}`);
+        console.error(`Process ${process.pid} could not add document's ${message.name} direct-index to db,
+          reason ${e}`);
       }
 
-      return process.send({type: message.type, jobs: [ ...Object.keys(index) ]});
+      return process.send({type: message.type, jobs: index.map(w => w.name)});
     }
 
     case 'reverse_index': {
@@ -87,17 +90,17 @@ process.on('message', async (message, socket) => {
 
         const results = await directIndexCollection.aggregate(pipeline);
         const docs = await results.toArray();
-        const doc = docs[0];
 
-        if (!doc) {
+        if (!docs) {
           console.warn(`Reverse indexing did not return results for word ${message.name}`);
           return process.send({type: message.type, jobs: [ message.name ]});
         }
 
-        const reverseFrequency = Math.log(message.numberOfDocumentsToIndex / (1 + doc.documents.length));
+        const idf = Math.log(message.numberOfDocumentsToIndex / (1 + docs.length));
 
-        const reverseIndex = Object.assign(doc, { word: message.name, reverseFrequency  });
-        reverseIndex.documents = reverseIndex.documents.map(d => { d.tfidf = d.frequency * reverseFrequency; return d; });
+        const reverseIndex = { word: message.name, reverseFrequency: idf, documents: docs };
+
+        reverseIndex.documents = reverseIndex.documents.map(d => { d.tfidf = d.tf * idf; return d; });
         delete reverseIndex['_id'];
 
         await reverseIndexCollection

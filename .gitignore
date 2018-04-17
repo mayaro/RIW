@@ -5,3 +5,6 @@ samples/
 direct-index/
 reverse-index/
 .idea/
+riwdataset/
+*.zip
+*.pdf

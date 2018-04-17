@@ -23,7 +23,7 @@ module.exports = exports = {
     for (let i = 0; i < count; ++i) {
       workers.push(
         fork(filename, [], {
-          "execArgv": [`--inspect-brk=${Math.floor(Math.random() * (65000 - 20000) + 20000)}`]
+          // "execArgv": [`--inspect-brk=${Math.floor(Math.random() * (65000 - 20000) + 20000)}`]
         })
       );
     }

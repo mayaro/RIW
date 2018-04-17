@@ -1,63 +1,67 @@
+const utf8 = require('utf8');
+
 module.exports = exports = {
 
   /**
-   * Create the direct index for a given text and return it as a object.
+   * Create the direct index for a given text and return it as a array.
    *
    * @param { String } text
-   * @return {{}}
+   * @return { object[] }
    */
   createDirectIndexFromText: function (text) {
-    let words = text.split(/\s+/);
-    const index = words
-      .reduce((index, word) => {
-        if (!word || !word.length) return index;
+    let words = text.split(/\s+/).sort();
 
-        index[word] = index[word] ? ++index[word] : 1;
-        return index;
-      }, {});
+    let index = [];
+    let previousWord = null;
 
-    const frequencies = {};
-    Object.entries(index).forEach(([key, value]) => {
-      frequencies[key] = value / words.length;
+    words.forEach(word => {
+      if (previousWord === null) {
+        previousWord = { name: word, appearances: 1 }
+
+        index.push(previousWord);
+
+        return;
+      }
+
+      if (word !== previousWord.name ) {
+        previousWord.tf = previousWord.appearances / words.length;
+
+        previousWord = { name: word, appearances: 0 };
+
+        index.push(previousWord);
+      }
+
+      previousWord.appearances++;
     });
 
-    return { index, frequencies };
+    return index;
   },
 
   GetReverseIndexingPipelineStages: function GetReverseIndexingPipelineStages(word) {
 
-    const unwindStage = {
-      "$unwind": "$words"
+    const matchFirstStage = {
+      $match: { "words.name": word }
     };
 
-    const matchStage = {
-      $match: {}
+    const unwindStage = {
+      $unwind: "$words"
     };
-    matchStage.$match[`words.${word}`] = { $exists: true };
+
+    const matchSecondStage = {
+      $match: {
+        "words.name": word
+      }
+    };
 
     const projectStage = {
       $project: {
-        _id: 0,
         name: 1,
-        appearances: `$words.${word}`,
-        frequency: `$frequencies.${word}`
+        appearances: "$words.appearances",
+        tf: "$words.tf"
       }
     };
 
-    const groupStage = {
-      $group: {
-        _id: null,
-        documents: {
-          $push: {
-            name: '$name',
-            appearances: '$appearances',
-            frequency: '$frequency'
-          }
-        }
-      }
-    };
-
-    return [ unwindStage, matchStage, projectStage, groupStage ];
+    return [ matchFirstStage, unwindStage, matchSecondStage, projectStage ];
 
   }
 
