@@ -2,7 +2,7 @@
   "name": "riw",
   "version": "1.0.0",
   "main": "index.js",
-  "description": "",
+  "description": "College project for the RIW class",
   "scripts": {
     "start": "node index.js"
   },
